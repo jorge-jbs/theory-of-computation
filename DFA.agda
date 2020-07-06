@@ -18,6 +18,7 @@ import Data.Fin.Properties
 import Data.Empty as Empty
 
 open import Lang
+open import Fin
 
 infixr 0 _$_
 
@@ -30,50 +31,10 @@ f $ x = f x
 _∋_ : ∀ {ℓ} (A : Type ℓ) → A → A
 A ∋ t = t
 
-znots-std : ∀ {m} {n : Fin m} → zero ≡ suc n → [ ⊥ ]
-znots-std {m} {n} p = subst F p tt
-  where
-    F : Fin (suc m) → Type₀
-    F zero = [ ⊤ ]
-    F (suc _) = [ ⊥ ]
-
---zznotss-std : ∀ {m} {n : Fin m} → zero ≡ suc n → [ ⊥ ]
-
-injSuc-std
-  : ∀ {k} {m n : Fin k}
-  → suc m ≡ suc n
-  → m ≡ n
-injSuc-std {k} {m} p = cong pred′ p
-  where
-    pred′ : Fin (suc k) → Fin k
-    pred′ zero = m
-    pred′ (suc q) = q
-
-injSuc-std₂
-  : ∀ {k} {m n : Fin k}
-  → (m ≡ n → [ ⊥ ])
-  → suc m ≡ suc n
-  → [ ⊥ ]
-injSuc-std₂ f p = f (injSuc-std p)
-
-discreteFin : ∀ {n} → Discrete (Fin n)
-discreteFin zero zero = yes refl
-discreteFin (suc x) zero = no (znots-std ∘ sym)
-discreteFin zero (suc y) = no znots-std
-discreteFin (suc x) (suc y) = mapDec (cong suc) injSuc-std₂ (discreteFin x y)
-
-isSetFin : ∀ {n} → isSet (Fin n)
-isSetFin = Discrete→isSet discreteFin
-
-IsFinite : Type₀ → Type₁
-IsFinite A = Σ ℕ (λ n → A ≡ Fin n)
-
-record DFA : Type₁ where
+record DFA {A : Type₀} (A-alph : IsAlphabet A) : Type₁ where
   field
     Q : Type₀
     Q-fin : IsFinite Q
-    A : Type₀
-    A-alph : IsAlphabet A
     δ : Q → A → Q
     initial-state : Q
     F : ℙ Q
@@ -85,6 +46,12 @@ record DFA : Type₁ where
   L : Lang A-alph
   L w = F (δ̂ initial-state w)
 
+{-
+Languages definable by deterministic finite automata
+-}
+DfaLangs : {A : Type₀} (IsA : IsAlphabet A) → ℙ (Lang IsA)
+DfaLangs IsA N = ∃[ M ∶ DFA IsA ] (DFA.L M ≡ N) , powersets-are-sets _ _
+
 module example-2-1 where
   δ : Fin 3 → Fin 2 → Fin 3
   δ zero zero = suc (suc zero)
@@ -93,18 +60,22 @@ module example-2-1 where
   δ (suc (suc zero)) zero = suc (suc zero)
   δ (suc (suc zero)) (suc zero) = suc zero
 
-  M : DFA
+  A : Type₀
+  A = Fin 2
+
+  A-alph : IsAlphabet A
+  A-alph = 2 , refl
+
+  M : DFA A-alph
   M = record
     { Q = Fin 3
     ; Q-fin = 3 , refl
-    ; A = Fin 2
-    ; A-alph = 2 , refl
     ; δ = δ
     ; initial-state = zero
     ; F = λ q → (q ≡ suc zero) , isSetFin q (suc zero)
     }
 
-  P : Word (M .DFA.A-alph) → hProp ℓ-zero
+  P : Word A-alph → hProp ℓ-zero
   P [] = ⊥
   P (a ∷ []) = ⊥
   P (zero ∷ suc zero ∷ _) = ⊤

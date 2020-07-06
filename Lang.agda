@@ -5,12 +5,13 @@ open import Cubical.Foundations.Function
 open import Cubical.Foundations.Logic
 open import Cubical.Data.Nat
 --open import Cubical.Data.Fin
-open import Data.Fin
 open import Cubical.Data.List
 open import Cubical.Data.Unit.Properties
 open import Cubical.Data.Empty renaming (⊥ to Empty)
 
 module Lang where
+
+open import Fin
 
 Finite : {X : Type ℓ-zero} → ℙ X → Type (ℓ-suc ℓ-zero)
 Finite {X} A = Σ X (_∈ A) ≡ Σ ℕ Fin
@@ -28,37 +29,6 @@ data FSSet (A : Type₀) : Type₁ where
 IsAlphabet : Type₀ → Type₁
 IsAlphabet A = Σ ℕ (λ n → A ≡ Fin n)
 
-{-}
-Alphabet : Type₁
-Alphabet = FiniteSubset ℕ
--}
-
-{-}
-A : Alphabet {{2}}
-A = 1 , 0 , refl
-
-a : A
-a = ?
--}
-
--- A = Fin _
-
---Σ[ k ∈ ℕ ] k + m ≡ n
-{-}
-a : AlphabetOf 2
-a = 1 , 0 , refl
-
-_ : (2 , a) ∈ A
-_ = {!!}
--}
-
-{-
-record Alphabet : Type₀ where
-  field
-    size : ℕ
-    carrier : Fin size
--}
-
 infix 10 ⋃
 
 -- | Infinitary union. Borrowed from the standard library
@@ -68,12 +38,12 @@ infix 10 ⋃
 _∪_ : ∀ {ℓ}{X : Type ℓ} → ℙ X → ℙ X → ℙ X
 (A ∪ B) x = A x ⊔ B x
 
-{-
-_≢_ : ∀ {ℓ}{X : Type ℓ} → (a b : X) → hProp ?
-a ≢ b = a ≡ b → Empty
--}
+∪-comm : ∀ {ℓ}{X : Type ℓ} (P Q : ℙ X) → P ∪ Q ≡ Q ∪ P
+∪-comm P Q i x = ⊔-comm (P x) (Q x) i
 
 module _ {A : Type₀} (IsA : IsAlphabet A) where
+  IsAlphabet→IsSet : isSet A
+  IsAlphabet→IsSet = transport (cong isSet (sym (IsA .snd))) isSetFin
 
   Word : Type₀
   Word = List A
