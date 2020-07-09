@@ -23,15 +23,17 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
     δ̂ q [] p = (p ≡ q) , isFinite→isSet Q-fin _ _
     δ̂ q (a ∷ w) p = ∃[ r ∶ Q ] δ q a r ⊓ δ̂ r w p
 
-    L : Lang A-alph
-    --L w = F ∩ δ̂ initial-state w) ≢ ∅
-    L w = ∃[ p ∶ Q ] δ̂ initial-state w p ⊓ F p
+    lang : Lang A-alph
+    --lang w = F ∩ δ̂ initial-state w ≢ ∅
+    lang w = ∃[ p ∶ Q ] δ̂ initial-state w p ⊓ F p
+
+  open NFA
 
   {-
   Languages definable by non-deterministic finite automata
   -}
   NfaLangs : ℙ (Lang A-alph)
-  NfaLangs N = ∃[ M ∶ NFA ] (NFA.L M ≡ N) , powersets-are-sets _ _
+  NfaLangs N = ∃[ M ∶ NFA ] (lang M ≡ N) , powersets-are-sets _ _
 
 module example-2-6 where
   A : Type₀
@@ -61,7 +63,7 @@ module example-2-6 where
     }
 
   δ̂ = NFA.δ̂ M
-  L = NFA.L M
+  L = NFA.lang M
 
   P : Word A-alph → hProp ℓ-zero
   P [] = ⊥

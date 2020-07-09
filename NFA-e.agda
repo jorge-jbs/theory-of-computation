@@ -35,11 +35,13 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
       -- p ∈ δ̂ q (a ∷ w) iff (for some states r and s):
       --     there exists a path of the form q …—ε→… r —a→ s …—w→… p
 
-    L : Lang A-alph
-    L w = ∃[ p ∶ Q ] δ̂ initial-state w p ⊓ F p
+    lang : Lang A-alph
+    lang w = ∃[ p ∶ Q ] δ̂ initial-state w p ⊓ F p
+
+  open NFA-ε
 
   {-
   Languages definable by non-deterministic finite automata with empty transitions
   -}
   NFAεLangs : ℙ (Lang A-alph)
-  NFAεLangs N = ∃[ M ∶ NFA-ε ] (NFA-ε.L M ≡ N) , powersets-are-sets _ _
+  NFAεLangs N = ∃[ M ∶ NFA-ε ] (lang M ≡ N) , powersets-are-sets _ _

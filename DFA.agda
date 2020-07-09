@@ -43,14 +43,14 @@ record DFA {A : Type₀} (A-alph : IsAlphabet A) : Type₁ where
   δ̂ q [] = q
   δ̂ q (a ∷ w) = δ̂ (δ q a) w
 
-  L : Lang A-alph
-  L w = F (δ̂ initial-state w)
+  lang : Lang A-alph
+  lang w = F (δ̂ initial-state w)
 
 {-
 Languages definable by deterministic finite automata
 -}
 DfaLangs : {A : Type₀} (IsA : IsAlphabet A) → ℙ (Lang IsA)
-DfaLangs IsA N = ∃[ M ∶ DFA IsA ] (DFA.L M ≡ N) , powersets-are-sets _ _
+DfaLangs IsA N = ∃[ M ∶ DFA IsA ] (DFA.lang M ≡ N) , powersets-are-sets _ _
 
 module example-2-1 where
   δ : Fin 3 → Fin 2 → Fin 3
@@ -83,7 +83,7 @@ module example-2-1 where
   P (suc zero ∷ b ∷ w) = P (b ∷ w)
 
   δ̂ = DFA.δ̂ M
-  L = DFA.L M
+  L = DFA.lang M
 
   δ-1-idempotent : ∀ a → δ (suc zero) a ≡ suc zero
   δ-1-idempotent _ = refl

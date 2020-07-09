@@ -18,29 +18,25 @@ repeat zero xs = []
 repeat (suc n) xs = xs ++ repeat n xs
 
 module _ {A : Type₀} (IsA : IsAlphabet A) where
-  data Regex : Type₀
-  L : Regex → Lang IsA
-
   infixr 10 _+_ _·_
   infixr 11 _*
-  data Regex where
+  data Regex : Type₀ where
     ∅ ε : Regex
     char : A → Regex
     _+_ _·_ : Regex → Regex → Regex
     _* : Regex → Regex
-    --eq : ∀ x y → L x ≡ L y → x ≡ y
-    --squash : isSet Regex
 
-  L ∅ w = ⊥
-  L ε w = ⟦ε⟧ IsA w
-  L (char x) w = (w ≡ x ∷ []) , isOfHLevelList 0 (IsAlphabet→IsSet IsA) _ _
-  L (x + y) w = (L x ∪ L y) w
-  L (x · y) w =
-    ∃[ u ] ∃[ v ] L x u ⊓ L y v ⊓
+  lang : Regex → Lang IsA
+  lang ∅ w = ⊥
+  lang ε w = ⟦ε⟧ IsA w
+  lang (char x) w = (w ≡ x ∷ []) , isOfHLevelList 0 (IsAlphabet→IsSet IsA) _ _
+  lang (x + y) w = (lang x ∪ lang y) w
+  lang (x · y) w =
+    ∃[ u ] ∃[ v ] lang x u ⊓ lang y v ⊓
       ( (u ++ v ≡ w)
       , isOfHLevelList 0 (IsAlphabet→IsSet IsA) _ _
       )
-  L (x *) w =
+  lang (x *) w =
     ⋃ ℕ
       (λ n u →
         ( (u ≡ repeat n w)
@@ -48,23 +44,21 @@ module _ {A : Type₀} (IsA : IsAlphabet A) where
         )
       )
       w
-  --L (eq x y p i) w = p i w
-  --L (squash x y p q i j) w = cong L p {!j!} w
 
   {-
   Languages definable by regular expressions
   -}
   RegexLangs : ℙ (Lang IsA)
-  RegexLangs M = ∃[ x ∶ Regex ] (L x ≡ M) , powersets-are-sets _ _
+  RegexLangs M = ∃[ x ∶ Regex ] (lang x ≡ M) , powersets-are-sets _ _
 
   RegexQuot : Type₁
-  RegexQuot = Regex / λ x y → L x ≡ L y
+  RegexQuot = Regex / λ x y → lang x ≡ lang y
 
   [_] : Regex → RegexQuot
   [_] = _/_.[_]
 
   +-comm : ∀ {x y} → [ x + y ] ≡ [ y + x ]
-  +-comm {x} {y} = eq/ _ _ (∪-comm (L x) (L y))
+  +-comm {x} {y} = eq/ _ _ (∪-comm (lang x) (lang y))
 
 module example where
   A : Type₀
@@ -84,8 +78,8 @@ module example where
   P (zero ∷ zero ∷ w) = P (zero ∷ w)
   P (suc zero ∷ b ∷ w) = P (b ∷ w)
 
-  L′ : Lang A-alph
-  L′ = L A-alph x
+  L : Lang A-alph
+  L = lang A-alph x
 
-  _ : L′ ≡ P
+  _ : L ≡ P
   _ = {!!}
