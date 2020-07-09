@@ -29,17 +29,24 @@ data FSSet (A : Type₀) : Type₁ where
 IsAlphabet : Type₀ → Type₁
 IsAlphabet A = Σ ℕ (λ n → A ≡ Fin n)
 
-infix 10 ⋃
+module _ {ℓ}{X : Type ℓ} where
+  ∅ : ℙ X
+  ∅ _ = Lift Empty , λ ()
 
--- | Infinitary union. Borrowed from the standard library
-⋃ : ∀ {X : Type₀} (I : Type₀) → (I → ℙ X) → ℙ X
-⋃ I A x = ∃[ i ] A i x
+  infix 10 ⋃
 
-_∪_ : ∀ {ℓ}{X : Type ℓ} → ℙ X → ℙ X → ℙ X
-(A ∪ B) x = A x ⊔ B x
+  -- | Infinitary union. Borrowed from the standard library
+  ⋃ : (I : Type₀) → (I → ℙ X) → ℙ X
+  ⋃ I A x = ∃[ i ] A i x
 
-∪-comm : ∀ {ℓ}{X : Type ℓ} (P Q : ℙ X) → P ∪ Q ≡ Q ∪ P
-∪-comm P Q i x = ⊔-comm (P x) (Q x) i
+  _∪_ : ℙ X → ℙ X → ℙ X
+  (A ∪ B) x = A x ⊔ B x
+
+  ∪-comm : (P Q : ℙ X) → P ∪ Q ≡ Q ∪ P
+  ∪-comm P Q i x = ⊔-comm (P x) (Q x) i
+
+  _∩_ : ℙ X → ℙ X → ℙ X
+  (A ∩ B) x = A x ⊓ B x
 
 module _ {A : Type₀} (IsA : IsAlphabet A) where
   IsAlphabet→IsSet : isSet A

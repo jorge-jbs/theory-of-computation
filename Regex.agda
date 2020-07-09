@@ -1,4 +1,4 @@
-{-# OPTIONS --cubical #-}
+{-# OPTIONS --cubical --allow-unsolved-metas #-}
 
 module Regex where
 
@@ -10,7 +10,7 @@ open import Cubical.Data.Nat hiding (_+_; +-comm)
 open import Cubical.Data.List hiding ([_])
 open import Cubical.Data.List.Properties
 
-open import Lang
+open import Lang hiding (∅)
 open import Fin
 
 repeat : {A : Type₀} → ℕ → List A → List A
@@ -21,6 +21,8 @@ module _ {A : Type₀} (IsA : IsAlphabet A) where
   data Regex : Type₀
   L : Regex → Lang IsA
 
+  infixr 10 _+_ _·_
+  infixr 11 _*
   data Regex where
     ∅ ε : Regex
     char : A → Regex
@@ -63,3 +65,27 @@ module _ {A : Type₀} (IsA : IsAlphabet A) where
 
   +-comm : ∀ {x y} → [ x + y ] ≡ [ y + x ]
   +-comm {x} {y} = eq/ _ _ (∪-comm (L x) (L y))
+
+module example where
+  A : Type₀
+  A = Fin 2
+
+  A-alph : IsAlphabet A
+  A-alph = 2 , refl
+
+  -- (0|1)*01(0|1)*
+  x : Regex A-alph
+  x = (char zero + char (suc zero))* · char zero · char (suc zero) · (char zero + char (suc zero))*
+
+  P : Lang A-alph
+  P [] = ⊥
+  P (a ∷ []) = ⊥
+  P (zero ∷ suc zero ∷ _) = ⊤
+  P (zero ∷ zero ∷ w) = P (zero ∷ w)
+  P (suc zero ∷ b ∷ w) = P (b ∷ w)
+
+  L′ : Lang A-alph
+  L′ = L A-alph x
+
+  _ : L′ ≡ P
+  _ = {!!}

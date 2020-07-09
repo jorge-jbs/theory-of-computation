@@ -55,3 +55,6 @@ isSetFin = Discrete→isSet discreteFin
 
 IsFinite : Type₀ → Type₁
 IsFinite A = Σ ℕ (λ n → A ≡ Fin n)
+
+isFinite→isSet : {A : Type₀} → IsFinite A → isSet A
+isFinite→isSet (n , r) = transport (cong isSet (sym r)) isSetFin
