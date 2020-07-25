@@ -7,23 +7,24 @@ open import Cubical.Foundations.Logic
 open import Cubical.Foundations.Function
 open import Cubical.Data.List hiding ([_])
 
+open import Common
 open import Lang
 open import Fin
 
-module _ {A : Type₀} (A-alph : IsAlphabet A) where
+module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   record NFA : Type₁ where
     field
       Q : Type₀
-      Q-fin : IsFinite Q
+      instance Q-fin : isFinSet Q
       δ : Q → A → ℙ Q
       initial-state : Q
       F : ℙ Q
 
-    δ̂ : Q → Word A-alph → ℙ Q
-    δ̂ q [] p = (p ≡ q) , isFinite→isSet Q-fin _ _
+    δ̂ : Q → Word A → ℙ Q
+    δ̂ q [] p = (p ≡ q) , isFinSet→isSet _ _
     δ̂ q (a ∷ w) p = ∃[ r ∶ Q ] δ q a r ⊓ δ̂ r w p
 
-    lang : Lang A-alph
+    lang : Lang A
     --lang w = F ∩ δ̂ initial-state w ≢ ∅
     lang w = ∃[ p ∶ Q ] δ̂ initial-state w p ⊓ F p
 
@@ -32,19 +33,14 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
   {-
   Languages definable by non-deterministic finite automata
   -}
-  NfaLangs : ℙ (Lang A-alph)
+  NfaLangs : ℙ (Lang A)
   NfaLangs N = ∃[ M ∶ NFA ] (lang M ≡ N) , powersets-are-sets _ _
 
 module example-2-6 where
   A : Type₀
   A = Fin 2
 
-  A-alph : IsAlphabet A
-  A-alph = 2 , refl
-
   Q = Fin 3
-  Q-fin : IsFinite Q
-  Q-fin = 3 , refl
 
   δ : Q → A → ℙ Q
   δ zero zero q = ((q ≡ zero) , isSetFin _ _)  ⊓ ((q ≡ suc zero) , isSetFin _ _)
@@ -53,10 +49,10 @@ module example-2-6 where
   δ (suc zero) (suc zero) q = (q ≡ suc (suc zero)) , isSetFin _ _
   δ (suc (suc zero)) _ q = ∅ q
 
-  M : NFA A-alph
+  M : NFA A
   M = record
     { Q = Q
-    ; Q-fin = Q-fin
+    ; Q-fin = it
     ; δ = δ
     ; initial-state = zero
     ; F = λ p → (suc (suc zero) ≡ p) , isSetFin _ _
@@ -65,7 +61,7 @@ module example-2-6 where
   δ̂ = NFA.δ̂ M
   L = NFA.lang M
 
-  P : Word A-alph → hProp ℓ-zero
+  P : Word A → hProp ℓ-zero
   P [] = ⊥
   P (a ∷ []) = ⊥
   P (zero ∷ suc zero ∷ _) = ⊤

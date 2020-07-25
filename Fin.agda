@@ -1,12 +1,18 @@
-{-# OPTIONS --cubical --safe #-}
+{-# OPTIONS --cubical --allow-unsolved-metas #-}
 
 module Fin where
 
 open import Cubical.Foundations.Prelude
 open import Cubical.Foundations.Logic
 open import Cubical.Foundations.Function
+open import Cubical.Foundations.Structure
+open import Cubical.Foundations.Isomorphism
+open import Cubical.Foundations.Univalence
+open import Cubical.Foundations.Equiv
+open import Cubical.HITs.PropositionalTruncation 
 open import Cubical.Data.Nat
 open import Cubical.Data.Nat.Order
+open import Cubical.Data.Sigma
 open import Cubical.Relation.Nullary using (Discrete; yes; no; mapDec)
 open import Cubical.Relation.Nullary.DecidableEq using (Discrete→isSet)
 import Cubical.Data.Fin as C
@@ -58,3 +64,25 @@ IsFinite A = Σ ℕ (λ n → A ≡ Fin n)
 
 isFinite→isSet : {A : Type₀} → IsFinite A → isSet A
 isFinite→isSet (n , r) = transport (cong isSet (sym r)) isSetFin
+
+private
+  variable
+    ℓ : Level
+    A : Type ℓ
+
+isFinSet : Type ℓ → Type ℓ
+isFinSet A = ∥ Σ ℕ (λ n → A ≃ Fin n) ∥
+
+isProp-isFinSet : isProp (isFinSet A)
+isProp-isFinSet = propTruncIsProp
+
+FinSet : Type (ℓ-suc ℓ)
+FinSet = TypeWithStr _ isFinSet
+
+-- Is this even true?
+isFinSet→isSet : {{_ : isFinSet A}} → isSet A
+isFinSet→isSet = {!!}
+
+instance
+  isFinSetFin : ∀ {n} → isFinSet (Fin n)
+  isFinSetFin = ∣ _ , pathToEquiv refl ∣

@@ -12,11 +12,11 @@ open import Cubical.Data.Maybe
 open import Lang
 open import Fin
 
-module _ {A : Type₀} (A-alph : IsAlphabet A) where
+module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   record NFA-ε : Type₁ where
     field
       Q : Type₀
-      Q-fin : IsFinite Q
+      instance isFinSetQ : isFinSet Q
       δ : Q → Maybe A → ℙ Q
       initial-state : Q
       F : ℙ Q
@@ -29,13 +29,13 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
     closure : Q → ℙ Q
     closure q p = ∃[ qs ∶ List Q ] is-path-of-εs (q ∷ qs ++ p ∷ [])
 
-    δ̂ : Q → Word A-alph → ℙ Q
+    δ̂ : Q → Word A → ℙ Q
     δ̂ q [] = closure q
     δ̂ q (a ∷ w) p = ∃[ r ∶ Q ] ∃[ s ∶ Q ] closure q r ⊓ δ r (just a) s ⊓ δ̂ s w p
       -- p ∈ δ̂ q (a ∷ w) iff (for some states r and s):
       --     there exists a path of the form q …—ε→… r —a→ s …—w→… p
 
-    lang : Lang A-alph
+    lang : Lang A
     lang w = ∃[ p ∶ Q ] δ̂ initial-state w p ⊓ F p
 
   open NFA-ε
@@ -43,5 +43,5 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
   {-
   Languages definable by non-deterministic finite automata with empty transitions
   -}
-  NFAεLangs : ℙ (Lang A-alph)
+  NFAεLangs : ℙ (Lang A)
   NFAεLangs N = ∃[ M ∶ NFA-ε ] (lang M ≡ N) , powersets-are-sets _ _

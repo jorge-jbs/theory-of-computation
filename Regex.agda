@@ -17,7 +17,7 @@ repeat : {A : Type₀} → ℕ → List A → List A
 repeat zero xs = []
 repeat (suc n) xs = xs ++ repeat n xs
 
-module _ {A : Type₀} (IsA : IsAlphabet A) where
+module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   infixr 10 _+_ _·_
   infixr 11 _*
   data Regex : Type₀ where
@@ -26,21 +26,21 @@ module _ {A : Type₀} (IsA : IsAlphabet A) where
     _+_ _·_ : Regex → Regex → Regex
     _* : Regex → Regex
 
-  lang : Regex → Lang IsA
+  lang : Regex → Lang A
   lang ∅ w = ⊥
-  lang ε w = ⟦ε⟧ IsA w
-  lang (char x) w = (w ≡ x ∷ []) , isOfHLevelList 0 (IsAlphabet→IsSet IsA) _ _
+  lang ε w = ⟦ε⟧ A w
+  lang (char x) w = (w ≡ x ∷ []) , isOfHLevelList 0 isFinSet→isSet _ _
   lang (x + y) w = (lang x ∪ lang y) w
   lang (x · y) w =
     ∃[ u ] ∃[ v ] lang x u ⊓ lang y v ⊓
       ( (u ++ v ≡ w)
-      , isOfHLevelList 0 (IsAlphabet→IsSet IsA) _ _
+      , isOfHLevelList 0 isFinSet→isSet _ _
       )
   lang (x *) w =
     ⋃ ℕ
       (λ n u →
         ( (u ≡ repeat n w)
-        , isOfHLevelList 0 (IsAlphabet→IsSet IsA) _ _
+        , isOfHLevelList 0 isFinSet→isSet _ _
         )
       )
       w
@@ -48,7 +48,7 @@ module _ {A : Type₀} (IsA : IsAlphabet A) where
   {-
   Languages definable by regular expressions
   -}
-  RegexLangs : ℙ (Lang IsA)
+  RegexLangs : ℙ (Lang A)
   RegexLangs M = ∃[ x ∶ Regex ] (lang x ≡ M) , powersets-are-sets _ _
 
   RegexQuot : Type₁
@@ -64,22 +64,19 @@ module example where
   A : Type₀
   A = Fin 2
 
-  A-alph : IsAlphabet A
-  A-alph = 2 , refl
-
   -- (0|1)*01(0|1)*
-  x : Regex A-alph
+  x : Regex A
   x = (char zero + char (suc zero))* · char zero · char (suc zero) · (char zero + char (suc zero))*
 
-  P : Lang A-alph
+  P : Lang A
   P [] = ⊥
   P (a ∷ []) = ⊥
   P (zero ∷ suc zero ∷ _) = ⊤
   P (zero ∷ zero ∷ w) = P (zero ∷ w)
   P (suc zero ∷ b ∷ w) = P (b ∷ w)
 
-  L : Lang A-alph
-  L = lang A-alph x
+  L : Lang A
+  L = lang A x
 
   _ : L ≡ P
   _ = {!!}

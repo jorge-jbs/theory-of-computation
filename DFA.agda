@@ -17,6 +17,7 @@ open import Data.Fin as S
 import Data.Fin.Properties
 import Data.Empty as Empty
 
+open import Common
 open import Lang
 open import Fin
 
@@ -31,26 +32,27 @@ f $ x = f x
 _∋_ : ∀ {ℓ} (A : Type ℓ) → A → A
 A ∋ t = t
 
-record DFA {A : Type₀} (A-alph : IsAlphabet A) : Type₁ where
-  field
-    Q : Type₀
-    Q-fin : IsFinite Q
-    δ : Q → A → Q
-    initial-state : Q
-    F : ℙ Q
+module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
+  record DFA : Type₁ where
+    field
+      Q : Type₀
+      instance isFinSetQ : isFinSet Q
+      δ : Q → A → Q
+      initial-state : Q
+      F : ℙ Q
 
-  δ̂ : Q → Word A-alph → Q
-  δ̂ q [] = q
-  δ̂ q (a ∷ w) = δ̂ (δ q a) w
+    δ̂ : Q → Word A → Q
+    δ̂ q [] = q
+    δ̂ q (a ∷ w) = δ̂ (δ q a) w
 
-  lang : Lang A-alph
-  lang w = F (δ̂ initial-state w)
+    lang : Lang A
+    lang w = F (δ̂ initial-state w)
 
-{-
-Languages definable by deterministic finite automata
--}
-DfaLangs : {A : Type₀} (IsA : IsAlphabet A) → ℙ (Lang IsA)
-DfaLangs IsA N = ∃[ M ∶ DFA IsA ] (DFA.lang M ≡ N) , powersets-are-sets _ _
+  {-
+  Languages definable by deterministic finite automata
+  -}
+  DfaLangs : ℙ (Lang A)
+  DfaLangs N = ∃[ M ∶ DFA ] (DFA.lang M ≡ N) , powersets-are-sets _ _
 
 module example-2-1 where
   δ : Fin 3 → Fin 2 → Fin 3
@@ -63,19 +65,16 @@ module example-2-1 where
   A : Type₀
   A = Fin 2
 
-  A-alph : IsAlphabet A
-  A-alph = 2 , refl
-
-  M : DFA A-alph
+  M : DFA A
   M = record
     { Q = Fin 3
-    ; Q-fin = 3 , refl
+    ; isFinSetQ = it
     ; δ = δ
     ; initial-state = zero
     ; F = λ q → (q ≡ suc zero) , isSetFin q (suc zero)
     }
 
-  P : Word A-alph → hProp ℓ-zero
+  P : Word A → hProp ℓ-zero
   P [] = ⊥
   P (a ∷ []) = ⊥
   P (zero ∷ suc zero ∷ _) = ⊤

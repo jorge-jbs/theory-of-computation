@@ -21,16 +21,17 @@ isEmpty X = X → [ ⊥ ]
 Subset : {X : Type ℓ} (P : ℙ X) → Type ℓ
 Subset {X = X} P = Σ X (_∈ P)
 
-module _ {A : Type₀} (A-alph : IsAlphabet A) where
+module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   record PFA : Type₁ where
     field
       Q : Type₀
-      Q-fin : IsFinite Q
+      instace isFinSetQ : isFinSet Q
       S : Type₀
-      S-alph : IsAlphabet S
+      instance isFinSetS : isFinSet S
       δ : Q → Maybe A → S → ℙ (Q × List S)
-      instance δ-fin : ∀ {q a s} → IsFinite (Subset (δ q a s))
+      instance δ-fin : ∀ {q a s} → isFinSet (Subset (δ q a s))
       --δ : Q → Maybe A → S → Σ (ℙ (Q × List S)) (IsFinite ∘ Subset)
+      --δ : Q → Maybe A → S → LFSet (Q × List S)
       initial-state : Q
       initial-symbol : S
       F : ℙ Q
@@ -39,7 +40,7 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
       constructor config
       field
         state : Q
-        word : Word A-alph
+        word : Word A
         stack : List S
 
     data _⊢_ : Config → Config → Type₀ where
@@ -65,13 +66,13 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
         → J ⊢* K
         → I ⊢* K
 
-    final-state-lang : Lang A-alph
+    final-state-lang : Lang A
     final-state-lang w =
       ∃[ q ∶ Q ] ∃[ α ∶ List S ]
         F q ⊓
         ∥ config initial-state w (initial-symbol ∷ []) ⊢* config q [] α ∥ₚ
 
-    empty-stack-lang : Lang A-alph
+    empty-stack-lang : Lang A
     empty-stack-lang w =
       ∃[ q ∶ Q ]
         ∥ config initial-state w (initial-symbol ∷ []) ⊢* config q [] [] ∥ₚ
@@ -84,10 +85,10 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
 
   open PFA
 
-  FinalStatePfaLangs : ℙ (Lang A-alph)
+  FinalStatePfaLangs : ℙ (Lang A)
   FinalStatePfaLangs N = ∃[ M ∶ PFA ] (final-state-lang M ≡ N) , powersets-are-sets _ _
 
-  EmptyStackPfaLangs : ℙ (Lang A-alph)
+  EmptyStackPfaLangs : ℙ (Lang A)
   EmptyStackPfaLangs N = ∃[ M ∶ PFA ] (empty-stack-lang M ≡ N) , powersets-are-sets _ _
 
   _ : FinalStatePfaLangs ≡ EmptyStackPfaLangs
@@ -96,5 +97,5 @@ module _ {A : Type₀} (A-alph : IsAlphabet A) where
   {-
   Languages definable by pushdown finite automata
   -}
-  PfaLangs : ℙ (Lang A-alph)
+  PfaLangs : ℙ (Lang A)
   PfaLangs = FinalStatePfaLangs

@@ -13,22 +13,6 @@ module Lang where
 
 open import Fin
 
-Finite : {X : Type ℓ-zero} → ℙ X → Type (ℓ-suc ℓ-zero)
-Finite {X} A = Σ X (_∈ A) ≡ Σ ℕ Fin
-
-FiniteSubset : Type₀ → Type₁
-FiniteSubset X = Σ (ℙ X) Finite
-
-data FSSet (A : Type₀) : Type₁ where
-  [] : FSSet A
-  _∷_ : (x : A) → (xs : FSSet A) → FSSet A
-  comm : ∀ x y xs → x ∷ y ∷ xs ≡ y ∷ x ∷ xs
-  dedup : ∀ x xs → x ∷ x ∷ xs ≡ x ∷ xs
-  trunc : isSet (FSSet A)
-
-IsAlphabet : Type₀ → Type₁
-IsAlphabet A = Σ ℕ (λ n → A ≡ Fin n)
-
 module _ {ℓ}{X : Type ℓ} where
   ∅ : ℙ X
   ∅ _ = Lift Empty , λ ()
@@ -48,10 +32,7 @@ module _ {ℓ}{X : Type ℓ} where
   _∩_ : ℙ X → ℙ X → ℙ X
   (A ∩ B) x = A x ⊓ B x
 
-module _ {A : Type₀} (IsA : IsAlphabet A) where
-  IsAlphabet→IsSet : isSet A
-  IsAlphabet→IsSet = transport (cong isSet (sym (IsA .snd))) isSetFin
-
+module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   Word : Type₀
   Word = List A
 
