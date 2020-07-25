@@ -69,4 +69,4 @@ module example-2-6 where
   P (suc zero ∷ b ∷ w) = P (b ∷ w)
 
   _ : L ≡ P
-  _ = {!!}
+  _ = {!TODO!}

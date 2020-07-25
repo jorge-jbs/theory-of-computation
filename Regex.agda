@@ -10,6 +10,7 @@ open import Cubical.Data.Nat hiding (_+_; +-comm)
 open import Cubical.Data.List hiding ([_])
 open import Cubical.Data.List.Properties
 
+open import Common
 open import Lang hiding (∅)
 open import Fin
 
@@ -79,4 +80,4 @@ module example where
   L = lang A x
 
   _ : L ≡ P
-  _ = {!!}
+  _ = TODO

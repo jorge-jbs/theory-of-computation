@@ -11,6 +11,7 @@ open import Cubical.Data.Empty renaming (⊥ to Empty)
 
 module Lang where
 
+open import Common
 open import Fin
 
 module _ {ℓ}{X : Type ℓ} where
@@ -55,10 +56,10 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   ⟦ε⟧ = _^_ 0
 
   _ : _^* ≡ ⋃ ℕ (_^_)
-  _ = {!!}
+  _ = {!TODO!}
 
   _ : _^+ ≡ ⋃ ℕ (_^_ ∘ suc)
-  _ = {!!}
+  _ = TODO
 
   _ : _^* ≡ _^+ ∪ ⟦ε⟧
-  _ = {!!}
+  _ = TODO

@@ -24,6 +24,8 @@ open import Data.Fin using (Fin; zero; suc) public
 import Data.Fin.Properties
 import Data.Empty as Empty
 
+open import Common
+
 znots-std : ∀ {m} {n : Fin m} → zero ≡ suc n → [ ⊥ ]
 znots-std {m} {n} p = subst F p tt
   where
@@ -81,7 +83,7 @@ FinSet = TypeWithStr _ isFinSet
 
 -- Is this even true?
 isFinSet→isSet : {{_ : isFinSet A}} → isSet A
-isFinSet→isSet = {!!}
+isFinSet→isSet = TODO
 
 instance
   isFinSetFin : ∀ {n} → isFinSet (Fin n)
