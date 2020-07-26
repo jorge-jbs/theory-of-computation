@@ -26,7 +26,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   record PFA : Type₁ where
     field
       Q : Type₀
-      instace isFinSetQ : isFinSet Q
+      instance isFinSetQ : isFinSet Q
       S : Type₀
       instance isFinSetS : isFinSet S
       δ : Q → Maybe A → S → ℙ (Q × List S)
@@ -93,7 +93,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   EmptyStackPfaLangs N = ∃[ M ∶ PFA ] (empty-stack-lang M ≡ N) , powersets-are-sets _ _
 
   _ : FinalStatePfaLangs ≡ EmptyStackPfaLangs
-  _ = {!TODO!}
+  _ = TODO
 
   {-
   Languages definable by pushdown finite automata

@@ -9,10 +9,11 @@ open import Cubical.Foundations.Structure
 open import Cubical.Foundations.Isomorphism
 open import Cubical.Foundations.Univalence
 open import Cubical.Foundations.Equiv
-open import Cubical.HITs.PropositionalTruncation 
+open import Cubical.HITs.PropositionalTruncation
 open import Cubical.Data.Nat
 open import Cubical.Data.Nat.Order
 open import Cubical.Data.Sigma
+open import Cubical.Data.Sum
 open import Cubical.Relation.Nullary using (Discrete; yes; no; mapDec)
 open import Cubical.Relation.Nullary.DecidableEq using (Discrete→isSet)
 import Cubical.Data.Fin as C
@@ -70,7 +71,7 @@ isFinite→isSet (n , r) = transport (cong isSet (sym r)) isSetFin
 private
   variable
     ℓ : Level
-    A : Type ℓ
+    A B : Type ℓ
 
 isFinSet : Type ℓ → Type ℓ
 isFinSet A = ∥ Σ ℕ (λ n → A ≃ Fin n) ∥
@@ -85,6 +86,13 @@ FinSet = TypeWithStr _ isFinSet
 isFinSet→isSet : {{_ : isFinSet A}} → isSet A
 isFinSet→isSet = TODO
 
+isFinSet→Discrete : {{_ : isFinSet A}} → Discrete A
+isFinSet→Discrete = TODO
+
 instance
   isFinSetFin : ∀ {n} → isFinSet (Fin n)
   isFinSetFin = ∣ _ , pathToEquiv refl ∣
+
+instance
+  isFinSet-⊎ : {{_ : isFinSet A}} {{_ : isFinSet B}} → isFinSet (A ⊎ B)
+  isFinSet-⊎ = TODO

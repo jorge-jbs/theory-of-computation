@@ -56,7 +56,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   ⟦ε⟧ = _^_ 0
 
   _ : _^* ≡ ⋃ ℕ (_^_)
-  _ = {!TODO!}
+  _ = TODO
 
   _ : _^+ ≡ ⋃ ℕ (_^_ ∘ suc)
   _ = TODO
