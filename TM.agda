@@ -52,73 +52,69 @@ lin-map-inl {xs = []} = lin-nil
 lin-map-inl {xs = x ∷ []} = lin-singleton inl-neq-inr
 lin-map-inl {xs = x ∷ y ∷ xs} = lin-cons (lin-map-inl {xs = y ∷ xs})
 
+head-maybe : List A → Maybe A
+head-maybe [] = nothing
+head-maybe (x ∷ _) = just x
+
+from-maybe : A → Maybe A → A
+from-maybe default nothing = default
+from-maybe default (just x) = x
+
 data Dir : Type₀ where
   left-dir right-dir : Dir
 
 module _ {A : Type ℓ} (_≟_ : Discrete A) (blank : A) where
-  move : Dir → List A → A → List A → List A × A × List A
-  move left-dir [] z [] with z ≟ blank
-  ... | yes _ = [] , blank , []
-  ... | no _ = [] , blank , z ∷ []
-  move left-dir [] z (y ∷ ys) = [] , blank , z ∷ y ∷ ys
-  move left-dir (x ∷ xs) z [] with z ≟ blank
-  ... | yes _ = xs , x , []
-  ... | no _ = xs , x , z ∷ []
-  move left-dir (x ∷ xs) z (y ∷ ys) = xs , x , z ∷ y ∷ ys
-  move right-dir [] z [] with z ≟ blank
-  ... | yes _ = [] , blank , []
-  ... | no _ = z ∷ [] , blank , []
-  move right-dir (x ∷ xs) z [] = z ∷ x ∷ xs , blank , []
-  move right-dir [] z (y ∷ ys) with z ≟ blank
-  ... | yes _ = [] , y , ys
-  ... | no _ = z ∷ [] , y , ys
-  move right-dir (x ∷ xs) z (y ∷ ys) = z ∷ x ∷ xs , y , ys
+  mutate : A → List A → List A
+  mutate z [] with z ≟ blank
+  ... | yes _ = []
+  ... | no _ = z ∷ []
+  mutate z (x ∷ xs) = z ∷ x ∷ xs
 
-  -- This should really be automated -.-
+  lin-mutate
+    : ∀ {z xs}
+    → LastIsNot blank xs
+    → LastIsNot blank (mutate z xs)
+  lin-mutate {z} {[]} lin-xs with z ≟ blank
+  ... | yes _ = lin-nil
+  ... | no z-neq-blank = lin-singleton z-neq-blank
+  lin-mutate {z} {x ∷ xs} lin-xs = lin-cons lin-xs
+
+  insert : A → List A → List A
+  insert z [] with z ≟ blank
+  ... | yes _ = []
+  ... | no _ = z ∷ []
+  insert z (x ∷ xs) = z ∷ x ∷ xs
+
+  lin-insert
+    : ∀ {z xs}
+    → LastIsNot blank xs
+    → LastIsNot blank (insert z xs)
+  lin-insert {z = z} {xs = []} lin-xs with z ≟ blank
+  ... | yes _ = lin-nil
+  ... | no z-neq-blank = lin-singleton z-neq-blank
+  lin-insert {z = z} {xs = _ ∷ _} lin-xs = lin-cons lin-xs
+
+  move : Dir → List A → List A → List A × List A
+  move left-dir [] ys = [] , insert blank ys
+  move left-dir (x ∷ xs) ys = xs , insert x ys
+  move right-dir xs [] = insert blank xs , []
+  move right-dir xs (y ∷ ys) = insert y xs , ys
+
   lin-move
     : (dir : Dir)
     → {xs : List A}
-    → {z : A}
     → {ys : List A}
-    → (let xs′ , z′ , ys′ = move dir xs z ys)
     → LastIsNot blank xs
     → LastIsNot blank ys
+    → (let xs′ , ys′ = move dir xs ys)
     -------------------------------------------
     → LastIsNot blank xs′ × LastIsNot blank ys′
-  lin-move left-dir {[]} {z} {[]} lin-xs lin-ys with z ≟ blank
-  ... | yes _ = lin-nil , lin-nil
-  ... | no z-neq-blank = lin-nil , lin-singleton z-neq-blank
-  lin-move left-dir {[]} {z} {y ∷ ys} lin-xs lin-ys = lin-nil , lin-cons lin-ys
-  lin-move left-dir {x ∷ xs} {z} {[]} lin-xs lin-ys with z ≟ blank
-  lin-move left-dir {x ∷ .[]} {z} {[]} (lin-singleton x₁) lin-ys | yes _ =
-    lin-nil , lin-nil
-  lin-move left-dir {x ∷ .(_ ∷ _)} {z} {[]} (lin-cons lin-xs) lin-ys | yes _ =
-    lin-xs , lin-nil
-  lin-move left-dir {x ∷ .[]} {z} {[]} (lin-singleton x₁) lin-ys | no z-neq-blank =
-    lin-nil , lin-singleton z-neq-blank
-  lin-move left-dir {x ∷ .(_ ∷ _)} {z} {[]} (lin-cons lin-xs) lin-ys | no z-neq-blank =
-    lin-xs , lin-singleton z-neq-blank
-  lin-move left-dir {x ∷ []} {z} {y ∷ ys} (lin-singleton _) lin-ys =
-    lin-nil , lin-cons lin-ys
-  lin-move left-dir {x ∷ xs} {z} {y ∷ ys} (lin-cons lin-xs) lin-ys =
-    lin-xs , lin-cons lin-ys
-  lin-move right-dir {[]} {z} {[]} lin-xs lin-ys with z ≟ blank
-  ... | yes _ = lin-nil , lin-nil
-  ... | no z-neq-blank = lin-singleton z-neq-blank , lin-nil
-  lin-move right-dir {x ∷ xs} {z} {[]} lin-xs lin-ys = lin-cons lin-xs , lin-nil
-  lin-move right-dir {[]} {z} {y ∷ ys} lin-xs lin-ys with z ≟ blank
-  lin-move right-dir {[]} {z} {y ∷ []} lin-xs (lin-singleton x₁) | yes _ =
-    lin-nil , lin-nil
-  lin-move right-dir {[]} {z} {y ∷ ys} lin-xs (lin-cons lin-ys) | yes _ =
-    lin-nil , lin-ys
-  lin-move right-dir {[]} {z} {y ∷ []} lin-xs (lin-singleton x) | no z-neq-blank =
-    lin-singleton z-neq-blank , lin-nil
-  lin-move right-dir {[]} {z} {y ∷ ys} lin-xs (lin-cons lin-ys) | no z-neq-blank =
-    lin-singleton z-neq-blank , lin-ys
-  lin-move right-dir {x ∷ xs} {z} {y ∷ .[]} lin-xs (lin-singleton _) =
-    lin-cons lin-xs , lin-nil
-  lin-move right-dir {x ∷ xs} {z} {y ∷ .(_ ∷ _)} lin-xs (lin-cons lin-ys) =
-    lin-cons lin-xs , lin-ys
+  lin-move left-dir {[]} {ys} lin-xs lin-ys = lin-nil , lin-insert lin-ys
+  lin-move left-dir {x ∷ .[]} {ys} (lin-singleton _) lin-ys = lin-nil , lin-insert lin-ys
+  lin-move left-dir {x ∷ .(_ ∷ _)} {ys} (lin-cons lin-xs) lin-ys = lin-xs , lin-insert lin-ys
+  lin-move right-dir {xs} {[]} lin-xs lin-ys = lin-insert lin-xs , lin-nil
+  lin-move right-dir {xs} {y ∷ .[]} lin-xs (lin-singleton _) = lin-insert lin-xs , lin-nil
+  lin-move right-dir {xs} {y ∷ .(_ ∷ _)} lin-xs (lin-cons lin-ys) = lin-insert lin-xs , lin-ys
 
 module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   --| Turing machines over an alphabet A.
@@ -171,9 +167,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
         the tape (except if the head is on the left of that symbol).
         -}
         last-left-not-blank : LastIsNot (⊎.inr blank) left
-        --| Symbol behind head
-        head : Γ
-        --| Symbols on the right of the head
+        --| Symbols on the right of the head or behind it
         right : List Γ
         {-|
         We don't store the blank symbols on the right of the right-most symbol of
@@ -183,14 +177,17 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
 
     data _⊢_ : Config → Config → Type₀ where
       step
-        : ∀ {q p X X′ left right lin-left lin-right dir}
+        : ∀ {q p X′ left right lin-left lin-right dir}
+        → (let X = from-maybe blank′ (head-maybe right))
         → δ q X ≡ just (p , X′ , dir)
-        → (let left′ , Y , right′ = move Discrete-Γ blank′ dir left X′ right )
-        → (let lin-left′ , lin-right′ =
-                 lin-move Discrete-Γ blank′ dir lin-left lin-right
+        → (let right′ = mutate Discrete-Γ blank′ X′ right)
+        → (let lin-right′ = lin-mutate Discrete-Γ blank′ lin-right)
+        → (let left′ , right″ = move Discrete-Γ blank′ dir left right′ )
+        → (let lin-left′ , lin-right″ =
+                 lin-move Discrete-Γ blank′ dir lin-left lin-right′
           )
-        → config q left  lin-left  X right  lin-right
-        ⊢ config p left′ lin-left′ Y right′ lin-right′
+        → config q left  lin-left  right  lin-right
+        ⊢ config p left′ lin-left′ right″ lin-right″
 
     {-|
     Turing Machines can step from one configuration to another in only one
@@ -222,19 +219,15 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
 
     {-|
     The language accepted by a Turing Machine.
-
-    The input is placed one cell at the right of the head. That means that the
-    head is blank initially.
     -}
     lang : Lang A
     lang w =
       ∃[ p ∶ Q ]
       ∃[ l ∶ List Γ ] ∃[ lin-l ∶ LastIsNot blank′ l ]
-      ∃[ h ∶ Γ ]
       ∃[ r ∶ List Γ ] ∃[ lin-r ∶ LastIsNot blank′ r ]
         F p ⊓
-          ∥  config init [] lin-nil blank′ (list-map ⊎.inl w) lin-map-inl
-          ⊢* config p    l  lin-l   h      r                  lin-r
+          ∥  config init [] lin-nil (list-map ⊎.inl w) lin-map-inl
+          ⊢* config p    l  lin-l   r                  lin-r
           ∥ₚ
 
   {-
