@@ -1,6 +1,6 @@
 {-# OPTIONS --cubical --allow-unsolved-metas #-}
 
-module TM where
+module MTTM where
 
 open import Cubical.Foundations.Prelude hiding (_∎)
 open import Cubical.Foundations.Logic
@@ -8,6 +8,8 @@ open import Cubical.Foundations.Function
 open import Cubical.HITs.PropositionalTruncation.Base
 open import Cubical.Relation.Nullary using (Discrete; yes; no)
 open import Cubical.Data.List hiding ([_])
+open import Cubical.Data.Vec as Vec hiding (head; tail)
+open import Cubical.Data.Nat
 open import Cubical.Data.Maybe
 open import Cubical.Data.Sigma
 open import Cubical.Data.Sum as ⊎
@@ -22,33 +24,11 @@ open import Fin
 private
   variable
     ℓ : Level
-    A B : Type ℓ
-
-inl-neq-inr : ∀ {x : A} {y : B} → ⊎.inl x ≡ ⊎.inr y → [ ⊥ ]
-inl-neq-inr {x = x} {y = y} inl-eq-inr =
-  elim {C = C} (λ _ → C-inl) (λ _ → C-inr) (⊎.inr y)
-  where
-    C : A ⊎ B → Type _
-    C (⊎.inl _) = [ ⊤ ]
-    C (⊎.inr _) = [ ⊥ ]
-
-    C-inl : C (⊎.inl x)
-    C-inl = tt
-
-    C-inr : C (⊎.inr y)
-    C-inr = transport (cong C inl-eq-inr) C-inl
+    A B C : Type ℓ
 
 list-map : (A → B) → List A → List B
 list-map f [] = []
 list-map f (x ∷ xs) = f x ∷ list-map f xs
-
-head-maybe : List A → Maybe A
-head-maybe [] = nothing
-head-maybe (x ∷ _) = just x
-
-from-maybe : A → Maybe A → A
-from-maybe default nothing = default
-from-maybe default (just x) = x
 
 _∷ₛ_ : A → Stream A → Stream A
 head (x ∷ₛ xs) = x
@@ -66,12 +46,23 @@ from-list : A → List A → Stream A
 from-list z [] = repeat z
 from-list z (x ∷ xs) = x ∷ₛ from-list z xs
 
+vec-map₂ : ∀ {k} → (A → B → C) → Vec A k → Vec B k → Vec C k
+vec-map₂ f [] [] = []
+vec-map₂ f (x ∷ xs) (y ∷ ys) = f x y ∷ vec-map₂ f xs ys
+
+vec-repeat : ∀ {k} → A → Vec A k
+vec-repeat {k = zero} x = []
+vec-repeat {k = suc k} x = x ∷ vec-repeat x
+
+vec-zip : ∀ {k} → Vec A k → Vec B k → Vec (A × B) k
+vec-zip = {!!}
+
 data Dir : Type₀ where
   left-dir right-dir : Dir
 
 module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
-  --| Turing machines over an alphabet A.
-  record TM : Type₁ where
+  --| Multi-tape Turing machines over an alphabet A.
+  record MTTM : Type₁ where
     field
       --| States.
       State : Type₀
@@ -79,6 +70,8 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
       --| Symbols exclusively for the tape.
       InternalSymbol : Type₀
       {{isFinSetInternalSymbol}} : isFinSet InternalSymbol
+      --| Number of work tapes
+      num-work-tapes : ℕ
 
     {-|
     The tape symbols (i.e. the input symbols plus the exclusively tape symbols).
@@ -86,9 +79,19 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     TapeSymbol : Type₀
     TapeSymbol = A ⊎ InternalSymbol
 
+    {-|
+    Total number of tapes (i.e. the number of work tapes plus one for the input
+    tape).
+    -}
+    num-tapes : ℕ
+    num-tapes = suc num-work-tapes
+
     field
       --| Transition function.
-      δ : State → TapeSymbol → State × TapeSymbol × Dir
+      δ
+        : State
+        → Vec TapeSymbol num-tapes
+        → State × Vec (TapeSymbol × Dir) num-tapes
       --| Initial state.
       init : State
       --| Blank symbol.
@@ -96,8 +99,8 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
       {-|
       Accepting states.
 
-      A Turing machine can only halt by reaching a final state, and it always
-      halts when it reaches a final state.
+      A multi-tape Turing machine can only halt by reaching a final state, and
+      it always halts when it reaches a final state.
       -}
       FinalState : ℙ State
 
@@ -113,8 +116,19 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
         --| Symbols on the right of the head.
         right : Stream TapeSymbol
 
+    Tapes : Type₀
+    Tapes = Vec Tape num-tapes
+
+    heads : Tapes → Vec TapeSymbol num-tapes
+    heads = Vec.map Tape.head
+
     blanks : Stream TapeSymbol
     blanks = repeat blank′
+
+    blank-tape : Tape
+    Tape.left blank-tape = blanks
+    Tape.head blank-tape = blank′
+    Tape.right blank-tape = blanks
 
     {-|
     We say a stream is bounded when, past a point, all its elements are the same.
@@ -134,38 +148,47 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     Tape.head (move right-dir (mk-tape l h r)) = r .head
     Tape.right (move right-dir (mk-tape l h r)) = r .tail
 
-    initial-tape : List A → Tape
-    Tape.left (initial-tape xs) = blanks
-    Tape.head (initial-tape []) = blank′
-    Tape.head (initial-tape (x ∷ xs)) = ⊎.inl x
-    Tape.right (initial-tape []) = blanks
-    Tape.right (initial-tape (x ∷ xs)) = from-list blank′ (list-map ⊎.inl xs)
+    move-all : Tapes → Vec (TapeSymbol × Dir) num-tapes → Tapes
+    move-all tapes heads-and-dirs =
+      vec-map₂
+        (λ (mk-tape l h r) (h′ , dir) → move dir (mk-tape l h′ r))
+        tapes
+        heads-and-dirs
+
+    initial-input-tape : List A → Tape
+    Tape.left (initial-input-tape xs) = blanks
+    Tape.head (initial-input-tape []) = blank′
+    Tape.head (initial-input-tape (x ∷ xs)) = ⊎.inl x
+    Tape.right (initial-input-tape []) = blanks
+    Tape.right (initial-input-tape (x ∷ xs)) = from-list blank′ (list-map ⊎.inl xs)
+
+    initial-tapes : List A → Tapes
+    initial-tapes w = initial-input-tape w ∷ vec-repeat blank-tape
 
     record Config : Type₀ where
       constructor config
       field
         --| Current state.
         state : State
-        --| The tape.
-        tape : Tape
+        --| The tapes.
+        tapes : Tapes
 
     data _⊢_ : Config → Config → Type₀ where
       step
-        : ∀ {q l h r}
-        → (let p , h′ , dir = δ q h)
-        → config q (mk-tape l h r)
-        ⊢ config p (move dir (mk-tape l h′ r))
+        : ∀ {q tapes}
+        → (let p , heads-and-dirs = δ q (heads tapes))
+        → config q tapes ⊢ config p (move-all tapes heads-and-dirs)
 
     {-|
-    Turing Machines can step from one configuration to another in only one
-    way.
+    Multi-tape multi-tape Turing machines can step from one configuration to
+    another in only one way.
     -}
     isProp-⊢ : ∀ {C D} → isProp (C ⊢ D)
     isProp-⊢ = TODO
 
     {-|
-    Given a Turing Machine configuration, there is only one configuration
-    that goes after it, or none.
+    Given a multi-tape multi-tape Turing machine configuration, there is only
+    one configuration that goes after it, or none.
     -}
     tm-deterministic : ∀ {C} → isProp (Σ[ D ∈ Config ] C ⊢ D)
     tm-deterministic = TODO
@@ -185,29 +208,32 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
         → I ⊢* K
 
     {-|
-    The language accepted by a Turing Machine.
+    The language accepted by a multi-tape multi-tape Turing machine.
     -}
     lang : Lang A
-    lang w = ∃[ p ∶ State ] ∃[ final-tape ∶ Tape ]
-      FinalState p ⊓ ∥ config init (initial-tape w) ⊢* config p final-tape ∥ₚ
+    lang w = ∃[ p ∶ State ] ∃[ final-tapes ∶ Tapes ]
+      FinalState p ⊓ ∥ config init (initial-tapes w) ⊢* config p final-tapes ∥ₚ
 
-  module _ (M : TM) where
-    open TM M
+  module _ (M : MTTM) where
+    open MTTM M
 
+    {-
     {-|
-    A Turing Machine can only read/write finitely many cells in finite time.
+    A multi-tape multi-tape Turing machine can only read/write finitely many
+    cells in finite time.
 
-    Note: assumming all Turing Machines start with the tape `initial-tape w`
-    where `w` is the input to the machine.
+    Note: assumming all multi-tape multi-tape Turing machines start with the
+    tapes `initial-tapes w` where `w` is the input to the machine.
     -}
     is-bounded-tape
       : ∀ {w C}
       → config init (initial-tape w) ⊢* C
       → IsBoundedTape (Config.tape C)
     is-bounded-tape = TODO
+    -}
 
   {-|
-  Languages definable by Turing machines.
+  Languages definable by multi-tape multi-tape Turing machines.
   -}
-  TmLangs : ℙ (Lang A)
-  TmLangs L = ∃[ M ∶ TM ] (TM.lang M ≡ L) , powersets-are-sets _ _
+  MttmLangs : ℙ (Lang A)
+  MttmLangs L = ∃[ M ∶ MTTM ] (MTTM.lang M ≡ L) , powersets-are-sets _ _
