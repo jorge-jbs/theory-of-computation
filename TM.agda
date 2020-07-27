@@ -12,6 +12,8 @@ open import Cubical.Data.Maybe
 open import Cubical.Data.Sigma
 open import Cubical.Data.Sum as ⊎
 open import Cubical.Data.Unit
+open import Cubical.Codata.Stream
+open Stream
 
 open import Common
 open import Lang
@@ -21,11 +23,6 @@ private
   variable
     ℓ : Level
     A B : Type ℓ
-
-data LastIsNot {A : Type ℓ} (z : A) : List A → Type ℓ where
-  lin-nil : LastIsNot z []
-  lin-singleton : ∀ {x} → (x ≡ z → [ ⊥ ]) → LastIsNot z (x ∷ [])
-  lin-cons : ∀ {x y xs} → LastIsNot z (x ∷ xs) → LastIsNot z (y ∷ x ∷ xs)
 
 inl-neq-inr : ∀ {x : A} {y : B} → ⊎.inl x ≡ ⊎.inr y → [ ⊥ ]
 inl-neq-inr {x = x} {y = y} inl-eq-inr =
@@ -45,13 +42,6 @@ list-map : (A → B) → List A → List B
 list-map f [] = []
 list-map f (x ∷ xs) = f x ∷ list-map f xs
 
-lin-map-inl
-  : ∀ {z : B} {xs : List A}
-  → LastIsNot (⊎.inr z) (list-map ⊎.inl xs)
-lin-map-inl {xs = []} = lin-nil
-lin-map-inl {xs = x ∷ []} = lin-singleton inl-neq-inr
-lin-map-inl {xs = x ∷ y ∷ xs} = lin-cons (lin-map-inl {xs = y ∷ xs})
-
 head-maybe : List A → Maybe A
 head-maybe [] = nothing
 head-maybe (x ∷ _) = just x
@@ -60,61 +50,24 @@ from-maybe : A → Maybe A → A
 from-maybe default nothing = default
 from-maybe default (just x) = x
 
+_∷ₛ_ : A → Stream A → Stream A
+head (x ∷ₛ xs) = x
+tail (x ∷ₛ xs) = xs
+
+repeat : A → Stream A
+head (repeat x) = x
+tail (repeat x) = repeat x
+
+data Suffix {A : Type₀} : Stream A → Stream A → Type₀ where
+  here : ∀ {xs} → Suffix xs xs
+  there : ∀ {xs y ys} → Suffix xs ys → Suffix xs (y , ys)
+
+from-list : A → List A → Stream A
+from-list z [] = repeat z
+from-list z (x ∷ xs) = x ∷ₛ from-list z xs
+
 data Dir : Type₀ where
   left-dir right-dir : Dir
-
-module _ {A : Type ℓ} (_≟_ : Discrete A) (blank : A) where
-  mutate : A → List A → List A
-  mutate z [] with z ≟ blank
-  ... | yes _ = []
-  ... | no _ = z ∷ []
-  mutate z (x ∷ xs) = z ∷ x ∷ xs
-
-  lin-mutate
-    : ∀ {z xs}
-    → LastIsNot blank xs
-    → LastIsNot blank (mutate z xs)
-  lin-mutate {z} {[]} lin-xs with z ≟ blank
-  ... | yes _ = lin-nil
-  ... | no z-neq-blank = lin-singleton z-neq-blank
-  lin-mutate {z} {x ∷ xs} lin-xs = lin-cons lin-xs
-
-  insert : A → List A → List A
-  insert z [] with z ≟ blank
-  ... | yes _ = []
-  ... | no _ = z ∷ []
-  insert z (x ∷ xs) = z ∷ x ∷ xs
-
-  lin-insert
-    : ∀ {z xs}
-    → LastIsNot blank xs
-    → LastIsNot blank (insert z xs)
-  lin-insert {z = z} {xs = []} lin-xs with z ≟ blank
-  ... | yes _ = lin-nil
-  ... | no z-neq-blank = lin-singleton z-neq-blank
-  lin-insert {z = z} {xs = _ ∷ _} lin-xs = lin-cons lin-xs
-
-  move : Dir → List A → List A → List A × List A
-  move left-dir [] ys = [] , insert blank ys
-  move left-dir (x ∷ xs) ys = xs , insert x ys
-  move right-dir xs [] = insert blank xs , []
-  move right-dir xs (y ∷ ys) = insert y xs , ys
-
-  lin-move
-    : (dir : Dir)
-    → {xs : List A}
-    → {ys : List A}
-    → LastIsNot blank xs
-    → LastIsNot blank ys
-    → (let xs′ , ys′ = move dir xs ys)
-    -------------------------------------------
-    → LastIsNot blank xs′ × LastIsNot blank ys′
-  lin-move left-dir {[]} {ys} lin-xs lin-ys = lin-nil , lin-insert lin-ys
-  lin-move left-dir {x ∷ .[]} {ys} (lin-singleton _) lin-ys = lin-nil , lin-insert lin-ys
-  lin-move left-dir {x ∷ .(_ ∷ _)} {ys} (lin-cons lin-xs) lin-ys = lin-xs , lin-insert lin-ys
-  lin-move right-dir {xs} {[]} lin-xs lin-ys = lin-insert lin-xs , lin-nil
-  lin-move right-dir {xs} {y ∷ .[]} lin-xs (lin-singleton _) = lin-insert lin-xs , lin-nil
-  lin-move right-dir {xs} {y ∷ .(_ ∷ _)} lin-xs (lin-cons lin-ys) = lin-insert lin-xs , lin-ys
 
 module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   --| Turing machines over an alphabet A.
@@ -148,46 +101,58 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
 
     blank′ = ⊎.inr blank
 
+    record Tape : Type₀ where
+      constructor mk-tape
+      field
+        --| Symbols on the left of the head.
+        left : Stream Γ
+        --| Symbols on the head of the tape.
+        head : Γ
+        --| Symbols on the right of the head.
+        right : Stream Γ
+
+    blanks : Stream Γ
+    blanks = repeat blank′
+
+    {-|
+    We say a stream is bounded when, past a point, all its elements are repeated.
+    Or, in other words, it has a suffix of the form `repeat z` for some z.
+    -}
+    IsBoundedStream : Stream Γ → Type₀
+    IsBoundedStream = Suffix blanks
+
+    IsBoundedTape : Tape → Type₀
+    IsBoundedTape (mk-tape l _ r) = IsBoundedStream l × IsBoundedStream r
+
+    move : Dir → Tape → Tape
+    Tape.left (move left-dir (mk-tape l h r)) = l .tail
+    Tape.head (move left-dir (mk-tape l h r)) = l .head
+    Tape.right (move left-dir (mk-tape l h r)) = h ∷ₛ r
+    Tape.left (move right-dir (mk-tape l h r)) = h ∷ₛ l
+    Tape.head (move right-dir (mk-tape l h r)) = r .head
+    Tape.right (move right-dir (mk-tape l h r)) = r .tail
+
+    initial-tape : List A → Tape
+    Tape.left (initial-tape xs) = blanks
+    Tape.head (initial-tape []) = blank′
+    Tape.head (initial-tape (x ∷ xs)) = ⊎.inl x
+    Tape.right (initial-tape []) = blanks
+    Tape.right (initial-tape (x ∷ xs)) = from-list blank′ (list-map ⊎.inl xs)
+
     record Config : Type₀ where
       constructor config
       field
-        --| Current state
+        --| Current state.
         state : Q
-        --| Symbols on the left of the head
-        left : List Γ
-        {-
-        TODO: is this the best way to do it? We could consider:
-
-        - Using HITs: would it make it more pleasant?
-        - Ignoring this condition: would it be a good definition of
-          configurations?
-        -}
-        {-|
-        We don't store the blank symbols on the left of the left-most symbol of
-        the tape (except if the head is on the left of that symbol).
-        -}
-        last-left-not-blank : LastIsNot (⊎.inr blank) left
-        --| Symbols on the right of the head or behind it
-        right : List Γ
-        {-|
-        We don't store the blank symbols on the right of the right-most symbol of
-        the tape (except if the head is on the right of that symbol).
-        -}
-        last-right-not-blank : LastIsNot (⊎.inr blank) right
+        --| The tape.
+        tape : Tape
 
     data _⊢_ : Config → Config → Type₀ where
       step
-        : ∀ {q p X′ left right lin-left lin-right dir}
-        → (let X = from-maybe blank′ (head-maybe right))
-        → δ q X ≡ just (p , X′ , dir)
-        → (let right′ = mutate Discrete-Γ blank′ X′ right)
-        → (let lin-right′ = lin-mutate Discrete-Γ blank′ lin-right)
-        → (let left′ , right″ = move Discrete-Γ blank′ dir left right′ )
-        → (let lin-left′ , lin-right″ =
-                 lin-move Discrete-Γ blank′ dir lin-left lin-right′
-          )
-        → config q left  lin-left  right  lin-right
-        ⊢ config p left′ lin-left′ right″ lin-right″
+        : ∀ {q p h h′ l r dir}
+        → δ q h ≡ just (p , h′ , dir)
+        → config q (mk-tape l h r)
+        ⊢ config p (move dir (mk-tape l h′ r))
 
     {-|
     Turing Machines can step from one configuration to another in only one
@@ -221,16 +186,25 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     The language accepted by a Turing Machine.
     -}
     lang : Lang A
-    lang w =
-      ∃[ p ∶ Q ]
-      ∃[ l ∶ List Γ ] ∃[ lin-l ∶ LastIsNot blank′ l ]
-      ∃[ r ∶ List Γ ] ∃[ lin-r ∶ LastIsNot blank′ r ]
-        F p ⊓
-          ∥  config init [] lin-nil (list-map ⊎.inl w) lin-map-inl
-          ⊢* config p    l  lin-l   r                  lin-r
-          ∥ₚ
+    lang w = ∃[ p ∶ Q ] ∃[ final-tape ∶ Tape ]
+      F p ⊓ ∥ config init (initial-tape w) ⊢* config p final-tape ∥ₚ
 
-  {-
+  module _ (M : TM) where
+    open TM M
+
+    {-|
+    A Turing Machine can only read/write finitely many cells in finite time.
+
+    Note: assumming all Turing Machines start with the tape `initial-tape w`
+    where `w` is the input to the machine.
+    -}
+    is-bounded-tape
+      : ∀ {w C}
+      → config init (initial-tape w) ⊢* C
+      → IsBoundedTape (Config.tape C)
+    is-bounded-tape = TODO
+
+  {-|
   Languages definable by Turing machines.
   -}
   TmLangs : ℙ (Lang A)
