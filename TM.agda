@@ -74,35 +74,32 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   record TM : Type₁ where
     field
       --| States.
-      Q : Type₀
-      {{isFinSetQ}} : isFinSet Q
+      State : Type₀
+      {{isFinSetState}} : isFinSet State
       --| Symbols exclusively for the tape.
-      S : Type₀
-      {{isFinSetS}} : isFinSet S
+      InternalSymbol : Type₀
+      {{isFinSetInternalSymbol}} : isFinSet InternalSymbol
 
     {-|
     The tape symbols (i.e. the input symbols plus the exclusively tape symbols).
     -}
-    Γ : Type₀
-    Γ = A ⊎ S
-
-    Discrete-Γ : Discrete Γ
-    Discrete-Γ = isFinSet→Discrete
+    TapeSymbol : Type₀
+    TapeSymbol = A ⊎ InternalSymbol
 
     field
       --| Transition function.
-      δ : Q → Γ → Q × Γ × Dir
+      δ : State → TapeSymbol → State × TapeSymbol × Dir
       --| Initial state.
-      init : Q
+      init : State
       --| Blank symbol.
-      blank : S
+      blank : InternalSymbol
       {-|
       Accepting states.
 
       A Turing machine can only halt by reaching a final state, and it always
       halts when it reaches a final state.
       -}
-      F : ℙ Q
+      FinalState : ℙ State
 
     blank′ = ⊎.inr blank
 
@@ -110,20 +107,20 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
       constructor mk-tape
       field
         --| Symbols on the left of the head.
-        left : Stream Γ
+        left : Stream TapeSymbol
         --| Symbols on the head of the tape.
-        head : Γ
+        head : TapeSymbol
         --| Symbols on the right of the head.
-        right : Stream Γ
+        right : Stream TapeSymbol
 
-    blanks : Stream Γ
+    blanks : Stream TapeSymbol
     blanks = repeat blank′
 
     {-|
     We say a stream is bounded when, past a point, all its elements are repeated.
     Or, in other words, it has a suffix of the form `repeat z` for some z.
     -}
-    IsBoundedStream : Stream Γ → Type₀
+    IsBoundedStream : Stream TapeSymbol → Type₀
     IsBoundedStream = Suffix blanks
 
     IsBoundedTape : Tape → Type₀
@@ -148,7 +145,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
       constructor config
       field
         --| Current state.
-        state : Q
+        state : State
         --| The tape.
         tape : Tape
 
@@ -191,8 +188,8 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     The language accepted by a Turing Machine.
     -}
     lang : Lang A
-    lang w = ∃[ p ∶ Q ] ∃[ final-tape ∶ Tape ]
-      F p ⊓ ∥ config init (initial-tape w) ⊢* config p final-tape ∥ₚ
+    lang w = ∃[ p ∶ State ] ∃[ final-tape ∶ Tape ]
+      FinalState p ⊓ ∥ config init (initial-tape w) ⊢* config p final-tape ∥ₚ
 
   module _ (M : TM) where
     open TM M
