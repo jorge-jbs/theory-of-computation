@@ -91,12 +91,17 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
 
     field
       --| Transition function.
-      δ : Q → Γ → Maybe (Q × Γ × Dir)
+      δ : Q → Γ → Q × Γ × Dir
       --| Initial state.
       init : Q
       --| Blank symbol.
       blank : S
-      --| Accepting states.
+      {-|
+      Accepting states.
+
+      A Turing machine can only halt by reaching a final state, and it always
+      halts when it reaches a final state.
+      -}
       F : ℙ Q
 
     blank′ = ⊎.inr blank
@@ -149,8 +154,8 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
 
     data _⊢_ : Config → Config → Type₀ where
       step
-        : ∀ {q p h h′ l r dir}
-        → δ q h ≡ just (p , h′ , dir)
+        : ∀ {q l h r}
+        → (let p , h′ , dir = δ q h)
         → config q (mk-tape l h r)
         ⊢ config p (move dir (mk-tape l h′ r))
 
