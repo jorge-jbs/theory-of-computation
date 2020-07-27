@@ -15,6 +15,8 @@ open import Cubical.Data.Unit
 open import Cubical.Codata.Stream
 open Stream
 
+open import ForUpstream.Data.List as L
+open import ForUpstream.Codata.Stream
 open import Common
 open import Lang
 open import Fin
@@ -23,48 +25,6 @@ private
   variable
     ℓ : Level
     A B : Type ℓ
-
-inl-neq-inr : ∀ {x : A} {y : B} → ⊎.inl x ≡ ⊎.inr y → [ ⊥ ]
-inl-neq-inr {x = x} {y = y} inl-eq-inr =
-  elim {C = C} (λ _ → C-inl) (λ _ → C-inr) (⊎.inr y)
-  where
-    C : A ⊎ B → Type _
-    C (⊎.inl _) = [ ⊤ ]
-    C (⊎.inr _) = [ ⊥ ]
-
-    C-inl : C (⊎.inl x)
-    C-inl = tt
-
-    C-inr : C (⊎.inr y)
-    C-inr = transport (cong C inl-eq-inr) C-inl
-
-list-map : (A → B) → List A → List B
-list-map f [] = []
-list-map f (x ∷ xs) = f x ∷ list-map f xs
-
-head-maybe : List A → Maybe A
-head-maybe [] = nothing
-head-maybe (x ∷ _) = just x
-
-from-maybe : A → Maybe A → A
-from-maybe default nothing = default
-from-maybe default (just x) = x
-
-_∷ₛ_ : A → Stream A → Stream A
-head (x ∷ₛ xs) = x
-tail (x ∷ₛ xs) = xs
-
-repeat : A → Stream A
-head (repeat x) = x
-tail (repeat x) = repeat x
-
-data Suffix {A : Type₀} : Stream A → Stream A → Type₀ where
-  here : ∀ {xs} → Suffix xs xs
-  there : ∀ {xs y ys} → Suffix xs ys → Suffix xs (y , ys)
-
-from-list : A → List A → Stream A
-from-list z [] = repeat z
-from-list z (x ∷ xs) = x ∷ₛ from-list z xs
 
 data Dir : Type₀ where
   left-dir right-dir : Dir
@@ -139,7 +99,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     Tape.head (initial-tape []) = blank′
     Tape.head (initial-tape (x ∷ xs)) = ⊎.inl x
     Tape.right (initial-tape []) = blanks
-    Tape.right (initial-tape (x ∷ xs)) = from-list blank′ (list-map ⊎.inl xs)
+    Tape.right (initial-tape (x ∷ xs)) = from-list blank′ (L.map ⊎.inl xs)
 
     record Config : Type₀ where
       constructor config

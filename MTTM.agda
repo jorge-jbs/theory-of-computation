@@ -17,6 +17,9 @@ open import Cubical.Data.Unit
 open import Cubical.Codata.Stream
 open Stream
 
+open import ForUpstream.Codata.Stream as S
+open import ForUpstream.Data.List as L
+open import ForUpstream.Data.Vec as V
 open import Common
 open import Lang
 open import Fin
@@ -25,37 +28,6 @@ private
   variable
     ℓ : Level
     A B C : Type ℓ
-
-list-map : (A → B) → List A → List B
-list-map f [] = []
-list-map f (x ∷ xs) = f x ∷ list-map f xs
-
-_∷ₛ_ : A → Stream A → Stream A
-head (x ∷ₛ xs) = x
-tail (x ∷ₛ xs) = xs
-
-repeat : A → Stream A
-head (repeat x) = x
-tail (repeat x) = repeat x
-
-data Suffix {A : Type₀} : Stream A → Stream A → Type₀ where
-  here : ∀ {xs} → Suffix xs xs
-  there : ∀ {xs y ys} → Suffix xs ys → Suffix xs (y , ys)
-
-from-list : A → List A → Stream A
-from-list z [] = repeat z
-from-list z (x ∷ xs) = x ∷ₛ from-list z xs
-
-vec-map₂ : ∀ {k} → (A → B → C) → Vec A k → Vec B k → Vec C k
-vec-map₂ f [] [] = []
-vec-map₂ f (x ∷ xs) (y ∷ ys) = f x y ∷ vec-map₂ f xs ys
-
-vec-repeat : ∀ {k} → A → Vec A k
-vec-repeat {k = zero} x = []
-vec-repeat {k = suc k} x = x ∷ vec-repeat x
-
-vec-zip : ∀ {k} → Vec A k → Vec B k → Vec (A × B) k
-vec-zip = {!!}
 
 data Dir : Type₀ where
   left-dir right-dir : Dir
@@ -123,7 +95,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     heads = Vec.map Tape.head
 
     blanks : Stream TapeSymbol
-    blanks = repeat blank′
+    blanks = S.repeat blank′
 
     blank-tape : Tape
     Tape.left blank-tape = blanks
@@ -150,7 +122,7 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
 
     move-all : Tapes → Vec (TapeSymbol × Dir) num-tapes → Tapes
     move-all tapes heads-and-dirs =
-      vec-map₂
+      V.map₂
         (λ (mk-tape l h r) (h′ , dir) → move dir (mk-tape l h′ r))
         tapes
         heads-and-dirs
@@ -160,10 +132,10 @@ module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
     Tape.head (initial-input-tape []) = blank′
     Tape.head (initial-input-tape (x ∷ xs)) = ⊎.inl x
     Tape.right (initial-input-tape []) = blanks
-    Tape.right (initial-input-tape (x ∷ xs)) = from-list blank′ (list-map ⊎.inl xs)
+    Tape.right (initial-input-tape (x ∷ xs)) = from-list blank′ (L.map ⊎.inl xs)
 
     initial-tapes : List A → Tapes
-    initial-tapes w = initial-input-tape w ∷ vec-repeat blank-tape
+    initial-tapes w = initial-input-tape w ∷ V.repeat blank-tape
 
     record Config : Type₀ where
       constructor config
