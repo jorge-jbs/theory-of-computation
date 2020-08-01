@@ -21,80 +21,85 @@ open import Common
 open import Lang
 open import Fin
 
-module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
+module _ (Symbol : Type₀) {{isFinSetA : isFinSet Symbol}} where
   record DFA : Type₁ where
     field
-      Q : Type₀
-      instance isFinSetQ : isFinSet Q
-      δ : Q → A → Q
-      initial-state : Q
-      F : ℙ Q
+      State : Type₀
+      {{isFinSetState}} : isFinSet State
+      next : State → Symbol → State
+      start-state : State
+      FinalState : ℙ State
+      -- Maybe using Listed finite sets is a better idea, but they aren't very
+      -- mature yet.
+      --final-states : LFSet State
 
-    δ̂ : Q → Word A → Q
-    δ̂ q [] = q
-    δ̂ q (a ∷ w) = δ̂ (δ q a) w
+    run : State → Word Symbol → State
+    run  q [] = q
+    run q (a ∷ w) = run (next q a) w
 
-    lang : Lang A
-    lang w = F (δ̂ initial-state w)
+    lang : Lang Symbol
+    --lang w = run start-state w ∈ final-states
+    lang w = FinalState (run start-state w)
 
   {-
   Languages definable by deterministic finite automata
   -}
-  DfaLangs : ℙ (Lang A)
+  DfaLangs : ℙ (Lang Symbol)
   DfaLangs N = ∃[ M ∶ DFA ] (DFA.lang M ≡ N) , powersets-are-sets _ _
 
 module example-2-1 where
-  δ : Fin 3 → Fin 2 → Fin 3
-  δ zero zero = suc (suc zero)
-  δ zero (suc zero) = zero
-  δ (suc zero) a = suc zero
-  δ (suc (suc zero)) zero = suc (suc zero)
-  δ (suc (suc zero)) (suc zero) = suc zero
+  next : Fin 3 → Fin 2 → Fin 3
+  next zero zero = suc (suc zero)
+  next zero (suc zero) = zero
+  next (suc zero) a = suc zero
+  next (suc (suc zero)) zero = suc (suc zero)
+  next (suc (suc zero)) (suc zero) = suc zero
 
-  A : Type₀
-  A = Fin 2
+  Symbol : Type₀
+  Symbol = Fin 2
 
-  M : DFA A
+  M : DFA Symbol
   M = record
-    { Q = Fin 3
-    ; isFinSetQ = it
-    ; δ = δ
-    ; initial-state = zero
-    ; F = λ q → (q ≡ suc zero) , isSetFin q (suc zero)
+    { State = Fin 3
+    ; isFinSetState = it
+    ; next = next
+    ; start-state = zero
+    -- ; final-states = suc zero LFS.∷ LFS.[]
+    ; FinalState = λ q → (q ≡ suc zero) , isSetFin q (suc zero)
     }
 
-  P : Word A → hProp ℓ-zero
+  P : Word Symbol → hProp ℓ-zero
   P [] = ⊥
   P (a ∷ []) = ⊥
   P (zero ∷ suc zero ∷ _) = ⊤
   P (zero ∷ zero ∷ w) = P (zero ∷ w)
   P (suc zero ∷ b ∷ w) = P (b ∷ w)
 
-  δ̂ = DFA.δ̂ M
+  run = DFA.run M
   L = DFA.lang M
 
-  δ-1-idempotent : ∀ a → δ (suc zero) a ≡ suc zero
-  δ-1-idempotent _ = refl
+  next-1-idempotent : ∀ a → next (suc zero) a ≡ suc zero
+  next-1-idempotent _ = refl
 
-  δ̂-1-idempotent : ∀ w → δ̂ (suc zero) w ≡ suc zero
-  δ̂-1-idempotent [] = refl
-  δ̂-1-idempotent (x ∷ w) = δ̂-1-idempotent w
+  run-1-idempotent : ∀ w → run (suc zero) w ≡ suc zero
+  run-1-idempotent [] = refl
+  run-1-idempotent (x ∷ w) = run-1-idempotent w
 
-  δ̂-lemma- : ∀ w → DFA.δ̂ M (suc zero) w ≡ suc zero
-  δ̂-lemma- [] = refl
-  δ̂-lemma- (a ∷ w) = δ̂-lemma- w
+  run-lemma- : ∀ w → DFA.run M (suc zero) w ≡ suc zero
+  run-lemma- [] = refl
+  run-lemma- (a ∷ w) = run-lemma- w
 
-  δ̂-lemma : ∀ q w → DFA.δ̂ M q (zero ∷ suc zero ∷ w) ≡ suc zero
-  δ̂-lemma zero [] = refl
-  δ̂-lemma (suc zero) [] = refl
-  δ̂-lemma (suc (suc zero)) [] = refl
-  δ̂-lemma zero (x ∷ w) = δ̂-lemma- w
-  δ̂-lemma (suc zero) (x ∷ w) = δ̂-lemma- w
-  δ̂-lemma (suc (suc zero)) (x ∷ w) = δ̂-lemma- w
+  run-lemma : ∀ q w → DFA.run M q (zero ∷ suc zero ∷ w) ≡ suc zero
+  run-lemma zero [] = refl
+  run-lemma (suc zero) [] = refl
+  run-lemma (suc (suc zero)) [] = refl
+  run-lemma zero (x ∷ w) = run-lemma- w
+  run-lemma (suc zero) (x ∷ w) = run-lemma- w
+  run-lemma (suc (suc zero)) (x ∷ w) = run-lemma- w
 
   P⊆L : P ⊆ L
   P⊆L (zero ∷ zero ∷ w) p = P⊆L (zero ∷ w) p
-  P⊆L (zero ∷ suc zero ∷ w) _ = δ̂-lemma zero w
+  P⊆L (zero ∷ suc zero ∷ w) _ = run-lemma zero w
   P⊆L (suc zero ∷ b ∷ w) p = P⊆L (b ∷ w) p
 
   ¬L-[] : [ ¬ (L []) ]
@@ -107,8 +112,8 @@ module example-2-1 where
   L-01 : ∀ w → [ L (zero ∷ suc zero ∷ w) ]
   L-01 w = lemma
     where
-      lemma : δ̂ zero (zero ∷ suc zero ∷ w) ≡ suc zero
-      lemma = δ̂-1-idempotent w
+      lemma : run zero (zero ∷ suc zero ∷ w) ≡ suc zero
+      lemma = run-1-idempotent w
 
   L-ind₁ : ∀ w → [ L (zero ∷ zero ∷ w)] → [ L (zero ∷ w)]
   L-ind₁ [] prf = ⊥.rec $ znots-std $ sym $ injSuc-std prf
