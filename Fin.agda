@@ -235,3 +235,5 @@ equiv-⊎ {n = n} {m = m} {A = A} {B = B} p q =
 instance
   isFinSet-⊎ : {{_ : isFinSet A}} {{_ : isFinSet B}} → isFinSet (A ⊎ B)
   isFinSet-⊎ = {!!}
+  isFinSet-× : {{_ : isFinSet A}} {{_ : isFinSet B}} → isFinSet (A × B)
+  isFinSet-× = {!!}

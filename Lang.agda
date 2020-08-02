@@ -82,6 +82,29 @@ module _ {ℓ}{X : Type ℓ} where
       ... | ⊎.inl [A] | ⊎.inr ¬B  = ⊥.elim (¬[¬A∨¬B] PT.∣ ⊎.inr ¬B ∣)
       ... | ⊎.inr ¬A  | _         = ⊥.elim (¬[¬A∨¬B] PT.∣ ⊎.inl ¬A ∣)
 
+  de-morgan-∪
+    : {{_ : LEM}}
+    → {A B : ℙ X}
+    → A ∪ B ≡ ((A ᶜ) ∩ (B ᶜ))ᶜ
+  de-morgan-∪ {A = A} {B = B} = ⊆-extensionality _ _ (⇒ , ⇐)
+    where
+      ⇒ : ∀ x → x ∈ (A ∪ B) → x ∈ (((A ᶜ) ∩ (B ᶜ))ᶜ)
+      ⇒ x A∨B (¬A , ¬B) =
+        PT.rec
+          isProp⊥
+          (λ { (⊎.inl Ax) → ¬A Ax
+             ; (⊎.inr Bx) → ¬B Bx
+             }
+          )
+          A∨B
+      ⇐ : ∀ x → x ∈ (((A ᶜ) ∩ (B ᶜ))ᶜ) → x ∈ (A ∪ B)
+      ⇐ x ¬[¬A∧¬B]
+        with classical-decide (x ∈ A) (∈-isProp A x)
+           | classical-decide (x ∈ B) (∈-isProp B x)
+      ... | ⊎.inl Ax | _ = PT.∣ ⊎.inl Ax ∣
+      ... | ⊎.inr ¬A | ⊎.inl Bx = PT.∣ ⊎.inr Bx ∣
+      ... | ⊎.inr ¬A | ⊎.inr ¬B = ⊥.elim (¬[¬A∧¬B] (¬A , ¬B))
+
 module _ (A : Type₀) {{isFinSetA : isFinSet A}} where
   Word : Type₀
   Word = List A
