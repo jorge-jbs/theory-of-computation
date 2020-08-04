@@ -18,6 +18,7 @@ module Lang where
 open import Axioms
 open import Common
 open import Fin
+open import Operators
 
 module _ {ℓ}{X : Type ℓ} where
   ∅ : ℙ X
@@ -38,8 +39,9 @@ module _ {ℓ}{X : Type ℓ} where
   _∩_ : ℙ X → ℙ X → ℙ X
   (A ∩ B) x = A x ⊓ B x
 
-  _ᶜ : ℙ X → ℙ X
-  (A ᶜ) x = ¬ A x
+  instance
+    Has-ᶜ-ℙ : Has-ᶜ (ℙ X) (ℙ X)
+    Has-ᶜ-ℙ ._ᶜ A x = ¬ A x
 
   de-morgan-∪-ᶜ : {A B : ℙ X} → (A ∪ B)ᶜ ≡ (A ᶜ) ∩ (B ᶜ)
   de-morgan-∪-ᶜ {A = A} {B = B} = ⊆-extensionality _ _ (⇒ , ⇐)

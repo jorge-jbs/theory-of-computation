@@ -7,7 +7,7 @@ open import Cubical.Foundations.Logic
 open import Cubical.Foundations.Function
 open import Cubical.Data.Nat
 open import Cubical.Data.Nat.Order
-open import Cubical.Data.Sigma
+open import Cubical.Data.Sigma hiding (_×_)
 open import Cubical.Data.Sum as ⊎
 open import Cubical.HITs.PropositionalTruncation as PT
 open import Cubical.Relation.Nullary using (Discrete; yes; no; mapDec)
@@ -24,6 +24,7 @@ open import Axioms
 open import Common
 open import Lang
 open import Fin
+open import Operators
 
 module _ (Symbol : Type₀) {{isFinSetA : isFinSet Symbol}} where
   record DFA : Type₁ where
@@ -53,52 +54,54 @@ module _ (Symbol : Type₀) {{isFinSetA : isFinSet Symbol}} where
   DfaLangs : ℙ (Lang Symbol)
   DfaLangs N = ∃[ M ∶ DFA ] (lang M ≡ N) , powersets-are-sets _ _
 
-  _×ₐ_ : DFA → DFA → DFA
-  M ×ₐ N = record
-    { State = (M .State) × (N .State)
-    ; next = λ (p , q) a → next M p a , next N q a
-    ; start-state = start-state M , start-state N
-    ; FinalState = λ (p , q) → FinalState M p ⊓ FinalState N q
-    }
+  instance
+    Has-×-DFA : Has-× DFA DFA DFA
+    Has-×-DFA ._×_ M N = record
+      { State = (M .State) × (N .State)
+      ; next = λ (p , q) a → next M p a , next N q a
+      ; start-state = start-state M , start-state N
+      ; FinalState = λ (p , q) → FinalState M p ⊓ FinalState N q
+      }
 
-  lang-× : (M N : DFA) → lang (M ×ₐ N) ≡ lang M ∩ lang N
+  lang-× : (M N : DFA) → lang (M × N) ≡ lang M ∩ lang N
   lang-× M N = ⊆-extensionality _ _ (⇒ , ⇐)
     where
       run-ext
         : ∀ w p q
-        → run (M ×ₐ N) (p , q) w
+        → run (M × N) (p , q) w
         ≡ (run M p w , run N q w)
       run-ext [] _ _ = refl
       run-ext (x ∷ w) p q = run-ext w (next M p x) (next N q x)
 
-      ⇒ : ∀ w → w ∈ lang (M ×ₐ N) → w ∈ (lang M ∩ lang N)
+      ⇒ : ∀ w → w ∈ lang (M × N) → w ∈ (lang M ∩ lang N)
       ⇒ w = subst
-        (_∈ FinalState (M ×ₐ N))
+        (_∈ FinalState (M × N))
         (run-ext w (start-state M) (start-state N))
-      ⇐ : ∀ w → w ∈ (lang M ∩ lang N) → w ∈ lang (M ×ₐ N)
+      ⇐ : ∀ w → w ∈ (lang M ∩ lang N) → w ∈ lang (M × N)
       ⇐ w = subst
-        (_∈ FinalState (M ×ₐ N))
+        (_∈ FinalState (M × N))
         (sym (run-ext w (start-state M) (start-state N)))
 
-  _⊕ₐ_ : DFA → DFA → DFA
-  M ⊕ₐ N = record
-    { State = (M .State) × (N .State)
-    ; next = λ (p , q) a → next M p a , next N q a
-    ; start-state = start-state M , start-state N
-    ; FinalState = λ (p , q) → FinalState M p ⊔ FinalState N q
-    }
+  instance
+    Has-⊕-DFA : Has-⊕ DFA DFA DFA
+    Has-⊕-DFA ._⊕_ M N = record
+      { State = (M .State) × (N .State)
+      ; next = λ (p , q) a → next M p a , next N q a
+      ; start-state = start-state M , start-state N
+      ; FinalState = λ (p , q) → FinalState M p ⊔ FinalState N q
+      }
 
-  lang-⊕ : ∀ M N → lang (M ⊕ₐ N) ≡ lang M ∪ lang N
+  lang-⊕ : ∀ M N → lang (M ⊕ N) ≡ lang M ∪ lang N
   lang-⊕ M N = ⊆-extensionality _ _  (⇒ , ⇐)
     where
       run-ext
         : ∀ w p q
-        → run (M ⊕ₐ N) (p , q) w
+        → run (M ⊕ N) (p , q) w
         ≡ (run M p w , run N q w)
       run-ext [] _ _ = refl
       run-ext (x ∷ w) p q = run-ext w (next M p x) (next N q x)
 
-      ⇒ : ∀ w → w ∈ lang (M ⊕ₐ N) → w ∈ (lang M ∪ lang N)
+      ⇒ : ∀ w → w ∈ lang (M ⊕ N) → w ∈ (lang M ∪ lang N)
       ⇒ w = PT.rec (∈-isProp (lang M ∪ lang N) w)
         λ { (⊎.inl x) → PT.∣ ⊎.inl (subst
               (_∈ FinalState M ∘ fst)
@@ -111,8 +114,8 @@ module _ (Symbol : Type₀) {{isFinSetA : isFinSet Symbol}} where
               x
             ) ∣
           }
-      ⇐ : ∀ w → w ∈ (lang M ∪ lang N) → w ∈ lang (M ⊕ₐ N)
-      ⇐ w = rec (∈-isProp (lang (M ⊕ₐ N)) w)
+      ⇐ : ∀ w → w ∈ (lang M ∪ lang N) → w ∈ lang (M ⊕ N)
+      ⇐ w = rec (∈-isProp (lang (M ⊕ N)) w)
         λ { (⊎.inl x) → PT.∣ ⊎.inl (subst
               (_∈ FinalState M ∘ fst)
               (sym (run-ext w (start-state M) (start-state N)))
@@ -125,30 +128,31 @@ module _ (Symbol : Type₀) {{isFinSetA : isFinSet Symbol}} where
             ) ∣
           }
 
-  _ᶜᵃ : DFA → DFA
-  M ᶜᵃ = record
-    { State = M .State
-    ; next = M .next
-    ; start-state = M .start-state
-    ; FinalState = λ q → ¬ FinalState M q
-    }
+  instance
+    Has-ᶜ-DFA : Has-ᶜ DFA DFA
+    Has-ᶜ-DFA ._ᶜ M = record
+      { State = M .State
+      ; next = M .next
+      ; start-state = M .start-state
+      ; FinalState = λ q → ¬ FinalState M q
+      }
 
-  lang-ᶜ : ∀ M → lang (M ᶜᵃ) ≡ (lang M) ᶜ
+  lang-ᶜ : ∀ M → lang (M ᶜ) ≡ (lang M) ᶜ
   lang-ᶜ M = ⊆-extensionality _ _  (⇒ , ⇐)
     where
       run-ext
         : ∀ w p
-        → run (M ᶜᵃ) p w
+        → run (M ᶜ) p w
         ≡ run M p w
       run-ext [] _ = refl
       run-ext (x ∷ w) p = run-ext w (next M p x)
 
-      ⇒ : ∀ w → w ∈ lang (M ᶜᵃ) → w ∈ ((lang M)ᶜ)
+      ⇒ : ∀ w → w ∈ lang (M ᶜ) → w ∈ ((lang M)ᶜ)
       ⇒ w = subst
         (λ h → fst (FinalState M h) → ⊥.⊥)
         (run-ext w (start-state M))
 
-      ⇐ : ∀ w → w ∈ ((lang M)ᶜ) → w ∈ lang (M ᶜᵃ)
+      ⇐ : ∀ w → w ∈ ((lang M)ᶜ) → w ∈ lang (M ᶜ)
       ⇐ w = subst
         (λ h → fst (FinalState M h) → ⊥.⊥)
         (sym (run-ext w (start-state M)))
@@ -176,7 +180,7 @@ module _ (Symbol : Type₀) {{isFinSetA : isFinSet Symbol}} where
       ... | ⊎.inr ¬P  | ⊎.inl [Q] = PT.∣ ⊎.inr [Q] ∣
       ... | ⊎.inr ¬P  | ⊎.inr ¬Q  = ⊥.elim (¬[¬P∧¬Q] (¬P , ¬Q))
 
-  de-morgan-⊕ : {{_ : LEM}} → ∀ M N → M ⊕ₐ N ≡ ((M ᶜᵃ) ×ₐ (N ᶜᵃ)) ᶜᵃ
+  de-morgan-⊕ : {{_ : LEM}} → ∀ M N → M ⊕ N ≡ (M ᶜ × N ᶜ)ᶜ
   de-morgan-⊕ M N i = record
     { State = refl i
     ; isFinSetState = it
